@@ -82,5 +82,6 @@
       - "Extra Disks:      {{ extra_disks | default(0) }}"
       - "Install ODF:      {{ installodf | default('false') }}"
       - "Install OCP Virt: {{ installocpvirt | default('false') }}"
+      - "Install GitOps:   {{ installgitops | default('false') }}"
       - "Clusters Dir:     {{ clusters_dir }}"
       - "============================================================"

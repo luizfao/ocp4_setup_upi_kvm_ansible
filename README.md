@@ -4,7 +4,7 @@
 [![OpenShift](https://img.shields.io/badge/OpenShift-EE0000?style=flat&logo=redhatopenshift&logoColor=white)](https://www.redhat.com/en/technologies/cloud-computing/openshift)
 [![KVM](https://img.shields.io/badge/KVM-FF6600?style=flat&logo=qemu&logoColor=white)](https://www.linux-kvm.org/)
 
-Automated OpenShift cluster deployment on KVM using Ansible. Supports both **Single Node OpenShift (SNO)** and **3-node clusters** with optional **OpenShift Data Foundation (ODF)** and **OpenShift Virtualization**.
+Automated OpenShift cluster deployment on KVM using Ansible. Supports both **Single Node OpenShift (SNO)** and **3-node clusters** with optional **OpenShift Data Foundation (ODF)**, **OpenShift Virtualization**, and **OpenShift GitOps (Argo CD)**.
 
 ## 🚀 Features
 
@@ -12,6 +12,7 @@ Automated OpenShift cluster deployment on KVM using Ansible. Supports both **Sin
 - ✅ **3-node cluster** deployment  
 - ✅ **OpenShift Data Foundation (ODF)** integration
 - ✅ **OpenShift Virtualization** support
+- ✅ **OpenShift GitOps (Argo CD)** continuous delivery
 - ✅ **LVM Storage** for lightweight persistent storage
 - ✅ **Modular Ansible structure** for better maintainability
 - ✅ **Automated DNS/DHCP** configuration
@@ -57,6 +58,13 @@ Automated OpenShift cluster deployment on KVM using Ansible. Supports both **Sin
 │    Auth     │───▶│   Storage    │───▶│    Virt     │
 │  (optional) │     │  (optional)  │     │  (optional) │
 └─────────────┘     └──────────────┘     └─────────────┘
+                                              │
+        ┌─────────────────────────────────────┘
+        ▼
+┌──────────────┐
+│   GitOps     │
+│  (optional)  │
+└──────────────┘
 ```
 
 ### SNO vs 3-Node Cluster
@@ -202,6 +210,7 @@ Edit `ansible-vars-kvm.yaml` with your configuration. Get the pull secret from [
 | `extra_disk_size` | `100` | Extra disk size (GB) |
 | `installodf` | `'false'` / `'true'` | Install ODF (3-node only) |
 | `installocpvirt` | `'false'` / `'true'` | Install Virtualization |
+| `installgitops` | `'false'` / `'true'` | Install OpenShift GitOps (Argo CD) |
 
 #### Authentication
 
@@ -257,6 +266,17 @@ installodf: 'true'
 installocpvirt: 'true'
 ```
 
+#### SNO with GitOps
+```yaml
+clustername: "sno-lab"
+sno: 'true'
+master_mem: '32000'
+master_cpu: 8
+n_worker: 0
+extra_disks: 1
+installgitops: 'true'
+```
+
 ## 🎯 Usage
 
 ### Create Cluster
@@ -297,6 +317,20 @@ cd /labs/your-cluster
 
 # Force stop
 ./stopvms.sh force
+```
+
+### Access Argo CD
+
+When `installgitops: 'true'`, the Argo CD URL and admin password are printed at the end of the playbook run. You can also retrieve them manually at any time:
+
+```bash
+# Get ArgoCD URL
+oc get route openshift-gitops-server -n openshift-gitops \
+  -o jsonpath='{.spec.host}'
+
+# Get admin password
+oc get secret openshift-gitops-cluster -n openshift-gitops \
+  -o jsonpath='{.data.admin\.password}' | base64 -d
 ```
 
 ### Destroy Cluster

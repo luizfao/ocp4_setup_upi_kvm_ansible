@@ -69,3 +69,7 @@
     - installodf | default('false') == 'true'
     - installocpvirt | default('false') == 'true'
     - sno | default('false') == 'false'
+
+- name: Configure OpenShift GitOps (ArgoCD)
+  ansible.builtin.include_tasks: configure_gitops.yaml
+  when: installgitops | default('false') == 'true'

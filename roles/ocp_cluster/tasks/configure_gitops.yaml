@@ -1,0 +1,100 @@
+---
+# Configure OpenShift GitOps (Argo CD)
+- name: Apply OpenShift GitOps Operator resources
+  kubernetes.core.k8s:
+    kubeconfig: "{{ clusters_dir }}/{{ clustername }}/auth/kubeconfig"
+    state: present
+    template: '{{ item }}'
+  loop:
+    - gitops-namespace.yaml.j2
+    - gitops-operatorgroup.yaml.j2
+    - gitops-subscription.yaml.j2
+  register: resultgitops
+  until: resultgitops is succeeded
+  retries: 30
+  delay: 10
+  failed_when: resultgitops is failed
+
+- name: Wait for GitOps Operator CSV to succeed
+  kubernetes.core.k8s_info:
+    kubeconfig: "{{ clusters_dir }}/{{ clustername }}/auth/kubeconfig"
+    api_version: operators.coreos.com/v1alpha1
+    kind: ClusterServiceVersion
+    namespace: openshift-gitops-operator
+  register: gitops_csv
+  retries: 60
+  delay: 10
+  until:
+    - gitops_csv.resources | length > 0
+    - gitops_csv.resources | selectattr('status.phase', 'defined') | selectattr('status.phase', 'equalto', 'Succeeded') | list | length > 0
+  ignore_errors: false
+
+- name: Wait for ArgoCD CRD to be available
+  kubernetes.core.k8s_info:
+    kubeconfig: "{{ clusters_dir }}/{{ clustername }}/auth/kubeconfig"
+    kind: CustomResourceDefinition
+    api_version: apiextensions.k8s.io/v1
+    name: argocds.argoproj.io
+  register: argocd_crd
+  retries: 60
+  delay: 10
+  until: argocd_crd.resources | length > 0
+  ignore_errors: true
+
+- name: Wait for default ArgoCD instance to be available
+  kubernetes.core.k8s_info:
+    kubeconfig: "{{ clusters_dir }}/{{ clustername }}/auth/kubeconfig"
+    api_version: argoproj.io/v1beta1
+    kind: ArgoCD
+    name: openshift-gitops
+    namespace: openshift-gitops
+  register: argocd_info
+  retries: 60
+  delay: 10
+  until:
+    - argocd_info.resources | length > 0
+    - argocd_info.resources[0].status is defined
+    - argocd_info.resources[0].status.phase is defined
+    - argocd_info.resources[0].status.phase == "Available"
+  ignore_errors: true
+
+- name: Retrieve ArgoCD server route
+  kubernetes.core.k8s_info:
+    kubeconfig: "{{ clusters_dir }}/{{ clustername }}/auth/kubeconfig"
+    api_version: route.openshift.io/v1
+    kind: Route
+    name: openshift-gitops-server
+    namespace: openshift-gitops
+  register: argocd_route
+  retries: 30
+  delay: 10
+  until: argocd_route.resources | length > 0
+  ignore_errors: true
+
+- name: Retrieve ArgoCD admin password
+  kubernetes.core.k8s_info:
+    kubeconfig: "{{ clusters_dir }}/{{ clustername }}/auth/kubeconfig"
+    kind: Secret
+    name: openshift-gitops-cluster
+    namespace: openshift-gitops
+  register: argocd_secret
+  ignore_errors: true
+
+- name: Set GitOps access facts
+  ansible.builtin.set_fact:
+    gitops_url: "https://{{ argocd_route.resources[0].spec.host }}"
+    gitops_admin_password: "{{ argocd_secret.resources[0].data['admin.password'] | b64decode }}"
+  when:
+    - argocd_route.resources | length > 0
+    - argocd_secret.resources | length > 0
+
+- name: Display ArgoCD access information
+  ansible.builtin.debug:
+    msg:
+      - "============================================================"
+      - "OpenShift GitOps (ArgoCD) is ready!"
+      - "============================================================"
+      - "ArgoCD URL:      {{ gitops_url | default('(route not yet available)') }}"
+      - "Admin user:      admin"
+      - "Admin password:  {{ gitops_admin_password | default('(check openshift-gitops-cluster secret)') }}"
+      - "============================================================"
