@@ -419,6 +419,21 @@ FAILED - RETRYING: Check if bootstrap...
 - Check bootstrap console: `virsh console cluster-bootstrap`
 - Verify ignition was served correctly
 
+#### 5. OCP SNO not restarting successfully
+**Issue:** Cluster does not come online after restart.
+
+This is a known Single Node OpenShift (SNO) installer issue. See [openshift/installer#6904](https://github.com/openshift/installer/issues/6904) for more details.
+
+**Solution**:
+1. SSH into the VM and `sudo su` into root
+2. Load kubeconfig to get access to OC commands
+`export KUBECONFIG=/etc/kubernetes/static-pod-resources/kube-apiserver-certs/secrets/node-kubeconfigs/lb-int.kubeconfig`
+3. Get certificates with pending status
+`oc get csr | grep -i pending`
+4. If there's any, approve them
+`oc get csr -o name | xargs oc adm certificate approve`
+5. Re-ran steps 3 and 4 as some more may come up after the initial ones and then wait a while to the cluster come up
+
 ### Debug Commands
 
 ```bash
