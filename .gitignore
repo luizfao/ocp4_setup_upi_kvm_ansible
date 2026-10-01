@@ -144,3 +144,4 @@ ansible-vars-*.yaml
 # Local inventory files
 inventory.local
 hosts.local
+cluster.out
