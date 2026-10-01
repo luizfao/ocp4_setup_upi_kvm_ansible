@@ -74,8 +74,18 @@
   loop:
     - "/etc/NetworkManager/dnsmasq.d/{{ clustername }}.conf"
     - "/etc/dnsmasq.{{ clustername }}.addnhosts"
+    - "/etc/systemd/resolved.conf.d/{{ clustername }}-dns.conf"
   register: network_files_deleted
   become: true
+
+- name: Restart systemd-resolved after removing cluster DNS forwarding
+  ansible.builtin.systemd:
+    name: systemd-resolved
+    state: restarted
+  become: true
+  when:
+    - ansible_facts['distribution'] == 'Fedora'
+    - network_files_deleted.changed
 
 # -----------------------------------------------------------------------------
 # Cluster Directory Cleanup
@@ -102,6 +112,15 @@
     state: restarted
   become: true
   when: cluster_vms | length > 0
+
+- name: Wait for DNS resolution to stabilize after service restarts
+  ansible.builtin.command: getent hosts mirror.openshift.com
+  register: dns_check
+  until: dns_check.rc == 0
+  retries: 12
+  delay: 5
+  changed_when: false
+  when: network_files_deleted.changed
 
 - name: Cleanup completed successfully
   ansible.builtin.debug:

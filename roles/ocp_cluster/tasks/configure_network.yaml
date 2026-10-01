@@ -47,6 +47,34 @@
   become: true
   when: sno == "true"
 
+# On Fedora, systemd-resolved owns /etc/resolv.conf (127.0.0.53).
+# A drop-in is needed so resolved forwards cluster domain queries
+# to NM's dnsmasq (127.0.0.1). This must be (re)created here because
+# cleanup.yaml deletes it when destroy_if_exists is true.
+# IMPORTANT: This must happen BEFORE restarting NM/libvirtd, otherwise
+# libvirt's dnsmasq queries systemd-resolved without the routing rule
+# and caches NXDOMAIN for the cluster domain.
+- name: Configure systemd-resolved to forward cluster domain to NM dnsmasq
+  ansible.builtin.copy:
+    dest: "/etc/systemd/resolved.conf.d/{{ clustername }}-dns.conf"
+    content: |
+      [Resolve]
+      DNS=127.0.0.1
+      Domains=~{{ clustername }}.{{ basedomain }}
+    mode: '0644'
+  register: resolved_dropin
+  become: true
+  when: ansible_facts['distribution'] == 'Fedora'
+
+- name: Restart systemd-resolved to apply cluster DNS forwarding
+  ansible.builtin.systemd:
+    name: systemd-resolved
+    state: restarted
+  become: true
+  when:
+    - ansible_facts['distribution'] == 'Fedora'
+    - resolved_dropin.changed
+
 - name: Restart Network Manager when configuring dnsmasq
   ansible.builtin.service:
     name: NetworkManager

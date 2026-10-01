@@ -43,39 +43,18 @@
 # -----------------------------------------------------------------------------
 # systemd-resolved Handling
 # -----------------------------------------------------------------------------
-- name: Check if systemd-resolved is active
-  ansible.builtin.systemd:
-    name: systemd-resolved
-  register: systemd_resolved_status
-  ignore_errors: true
-  when: ansible_facts['distribution'] == 'Fedora'
-
-- name: Stop and disable systemd-resolved service
-  ansible.builtin.systemd:
-    name: systemd-resolved
-    state: stopped
-    enabled: false
-  become: true
-  when:
-    - ansible_facts['distribution'] == 'Fedora'
-    - systemd_resolved_status is defined
-    - systemd_resolved_status.status is defined
-    - systemd_resolved_status.status.ActiveState == 'active'
-
-- name: Check if /etc/resolv.conf is a symlink
-  ansible.builtin.stat:
-    path: /etc/resolv.conf
-  register: resolv_conf_stat
-  when: ansible_facts['distribution'] == 'Fedora'
-
-- name: Remove symlinked /etc/resolv.conf for NetworkManager control
+# On Fedora, systemd-resolved may be managed by corporate tooling (e.g. CSB)
+# that re-enables it and resets /etc/resolv.conf to the stub resolver
+# (127.0.0.53). We only ensure the drop-in directory exists here; the actual
+# drop-in file is created in configure_network.yaml (which runs after
+# cleanup.yaml, avoiding the file being deleted before it's needed).
+- name: Ensure systemd-resolved drop-in directory exists
   ansible.builtin.file:
-    path: /etc/resolv.conf
-    state: absent
-  when:
-    - ansible_facts['distribution'] == 'Fedora'
-    - resolv_conf_stat.stat.islnk | default(false)
+    path: /etc/systemd/resolved.conf.d
+    state: directory
+    mode: '0755'
   become: true
+  when: ansible_facts['distribution'] == 'Fedora'
 
 # -----------------------------------------------------------------------------
 # Restart Services
