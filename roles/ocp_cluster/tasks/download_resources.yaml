@@ -35,6 +35,10 @@
     dest: "{{ ocp_cache_dir }}/openshift-install-linux-{{ ocpversion }}.tar.gz"
     mode: '0644'
     owner: "{{ lookup('env', 'USER') }}"
+  register: installer_download
+  until: installer_download is not failed
+  retries: 6
+  delay: 10
   become: true
   when: not installer_cached.stat.exists
 
@@ -52,6 +56,10 @@
     dest: "{{ ocp_cache_dir }}/rhcos.iso"
     mode: '0644'
     owner: "{{ lookup('env', 'USER') }}"
+  register: rhcos_iso_download
+  until: rhcos_iso_download is not failed
+  retries: 6
+  delay: 10
   become: true
   when:
     - not rhcos_iso_cached.stat.exists
@@ -63,6 +71,10 @@
     dest: "{{ ocp_cache_dir }}/rhcos.iso"
     mode: '0644'
     owner: "{{ lookup('env', 'USER') }}"
+  register: rhcos_iso_download
+  until: rhcos_iso_download is not failed
+  retries: 6
+  delay: 10
   become: true
   when:
     - not rhcos_iso_cached.stat.exists

@@ -37,6 +37,10 @@
     url: "{{ ocp_cluster_mirror_url }}{{ ocpversion | regex_replace('(\\d+\\.\\d+).*', '\\1') }}/latest/rhcos-qemu.x86_64.qcow2.gz"
     dest: "{{ ocp_cache_dir }}/rhcos-qemu.x86_64.qcow2.gz"
     mode: "0644"
+  register: rhcos_qemu_download
+  until: rhcos_qemu_download is not failed
+  retries: 6
+  delay: 10
   when: not rhcos_qemu_cached.stat.exists
 
 - name: Download rootfs image
@@ -44,6 +48,10 @@
     url: "{{ ocp_cluster_mirror_url }}{{ ocpversion | regex_replace('(\\d+\\.\\d+).*', '\\1') }}/latest/rhcos-live-rootfs.x86_64.img"
     dest: "{{ ocp_cache_dir }}/rhcos-live-rootfs.x86_64.img"
     mode: "0644"
+  register: rootfs_download
+  until: rootfs_download is not failed
+  retries: 6
+  delay: 10
   when: not rootfs_cached.stat.exists
 
 - name: Download initramfs image
@@ -51,6 +59,10 @@
     url: "{{ ocp_cluster_mirror_url }}{{ ocpversion | regex_replace('(\\d+\\.\\d+).*', '\\1') }}/latest/rhcos-live-initramfs.x86_64.img"
     dest: "{{ ocp_cache_dir }}/initramfs.img"
     mode: "0644"
+  register: initramfs_download
+  until: initramfs_download is not failed
+  retries: 6
+  delay: 10
   when: not initramfs_cached.stat.exists
 
 - name: Download kernel image
@@ -58,4 +70,8 @@
     url: "{{ ocp_cluster_mirror_url }}{{ ocpversion | regex_replace('(\\d+\\.\\d+).*', '\\1') }}/latest/rhcos-live-kernel.x86_64"
     dest: "{{ ocp_cache_dir }}/vmlinuz"
     mode: "0644"
+  register: kernel_download
+  until: kernel_download is not failed
+  retries: 6
+  delay: 10
   when: not kernel_cached.stat.exists
