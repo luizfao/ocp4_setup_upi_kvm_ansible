@@ -71,6 +71,7 @@
       loop:
         - "/etc/NetworkManager/dnsmasq.d/{{ clustername }}.conf"
         - "/etc/dnsmasq.{{ clustername }}.addnhosts"
+        - "/etc/systemd/resolved.conf.d/{{ clustername }}-dns.conf"
       register: network_files_deleted
 
     # -------------------------------------------------------------------------
@@ -95,6 +96,17 @@
         name: NetworkManager
         state: restarted
       when: network_files_deleted.changed
+
+    - name: Restart systemd-resolved after removing cluster DNS forwarding
+      ansible.builtin.systemd:
+        name: systemd-resolved
+        state: restarted
+      when: >-
+        network_files_deleted.results
+        | selectattr('path', 'search', 'resolved.conf.d')
+        | selectattr('changed')
+        | list
+        | length > 0
 
   post_tasks:
     - name: Display completion message
