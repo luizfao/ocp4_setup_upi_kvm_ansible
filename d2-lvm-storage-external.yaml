@@ -168,16 +168,14 @@
 
     - name: Remove default annotation from other StorageClasses
       kubernetes.core.k8s:
-        state: present
+        state: patched
+        api_version: storage.k8s.io/v1
+        kind: StorageClass
+        name: "{{ item.metadata.name }}"
         definition:
-          apiVersion: storage.k8s.io/v1
-          kind: StorageClass
           metadata:
-            name: "{{ item.metadata.name }}"
             annotations:
               storageclass.kubernetes.io/is-default-class: "false"
-          provisioner: "{{ item.provisioner }}"
-          reclaimPolicy: "{{ item.reclaimPolicy }}"
       loop: "{{ existing_sc.resources }}"
       when:
         - item.metadata.annotations is defined
