@@ -14,6 +14,18 @@
     lvmcluster_template: "templates/d2-storage-lvmcluster.yaml.j2"
     lvmcluster_file: "{{ clusters_dir }}/{{ clustername }}/d2-storage-lvmcluster.yaml"
     kubeconfig_path: "{{ clusters_dir }}/{{ clustername }}/auth/kubeconfig"
+    # Standalone playbook: do not depend on ocp_cluster role defaults
+    extra_disk_letters:
+      - vdb
+      - vdc
+      - vdd
+      - vde
+      - vdf
+      - vdg
+      - vdh
+      - vdi
+      - vdj
+      - vdk
 
   pre_tasks:
     - name: Validate required variables
@@ -119,7 +131,7 @@
     # -------------------------------------------------------------------------
     - name: Generate extra disks list
       ansible.builtin.set_fact:
-        extra_disks_list: "{{ ocp_cluster_extra_disk_letters[:extra_disks | int] | default(['vdb', 'vdc', 'vdd', 'vde', 'vdf', 'vdg', 'vdh', 'vdi', 'vdj', 'vdk'][:extra_disks | int]) }}"
+        extra_disks_list: "{{ extra_disk_letters[:extra_disks | int] }}"
 
     - name: Display configured disks
       ansible.builtin.debug:
